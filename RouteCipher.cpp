@@ -16,8 +16,20 @@ std::wstring RouteCipher::encrypt(const std::wstring& open_text)
         return L"";
     }
 
+    // Удаляем пробелы из исходного текста
+    std::wstring text_without_spaces;
+    for (wchar_t c : open_text) {
+        if (c != L' ') {
+            text_without_spaces += c;
+        }
+    }
+
+    if (text_without_spaces.empty()) {
+        return L"";
+    }
+
     // Определяем количество строк
-    int text_len = open_text.length();
+    int text_len = text_without_spaces.length();
     int rows = (text_len + key - 1) / key;
 
     // Создаем таблицу для записи
@@ -28,9 +40,9 @@ std::wstring RouteCipher::encrypt(const std::wstring& open_text)
     for (int i = 0; i < rows; i++) {
         for (int j = 0; j < key; j++) {
             if (index < text_len) {
-                table[i][j] = open_text[index++];
+                table[i][j] = text_without_spaces[index++];
             } else {
-                table[i][j] = L' '; // заполняем пустые ячейки пробелами
+                table[i][j] = L'*'; // заполняем пустые ячейки специальным символом
             }
         }
     }
@@ -54,7 +66,11 @@ std::wstring RouteCipher::decrypt(const std::wstring& cipher_text)
 
     // Определяем количество строк
     int text_len = cipher_text.length();
-    int rows = (text_len + key - 1) / key;
+    int rows = text_len / key;
+
+    if (rows * key != text_len) {
+        throw std::invalid_argument("Некорректная длина зашифрованного текста");
+    }
 
     // Создаем таблицу для расшифровки
     std::vector<std::vector<wchar_t>> table(rows, std::vector<wchar_t>(key, L' '));
@@ -63,9 +79,7 @@ std::wstring RouteCipher::decrypt(const std::wstring& cipher_text)
     int index = 0;
     for (int j = key - 1; j >= 0; j--) {
         for (int i = 0; i < rows; i++) {
-            if (index < text_len) {
-                table[i][j] = cipher_text[index++];
-            }
+            table[i][j] = cipher_text[index++];
         }
     }
 
@@ -73,13 +87,11 @@ std::wstring RouteCipher::decrypt(const std::wstring& cipher_text)
     std::wstring result;
     for (int i = 0; i < rows; i++) {
         for (int j = 0; j < key; j++) {
-            result += table[i][j];
+            // Пропускаем символы-заполнители
+            if (table[i][j] != L'*') {
+                result += table[i][j];
+            }
         }
-    }
-
-    // Убираем лишние пробелы в конце
-    while (!result.empty() && result.back() == L' ') {
-        result.pop_back();
     }
 
     return result;
